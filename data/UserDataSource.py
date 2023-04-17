@@ -1,6 +1,5 @@
 from model.User import User
 
-
 class UserDataSource:
     def __init__(self):
         self.data = {}

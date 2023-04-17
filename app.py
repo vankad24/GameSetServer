@@ -11,8 +11,6 @@ from dto.response.ErrorResponse import ErrorResponse
 from dto.response.TokenResponse import TokenResponse
 from repository.UserRepository import UserRepository
 
-#pip install jsonpickle
-
 app = Flask(__name__)
 app.secret_key = '728fc787f7914b9684f4a7cefa7405c0'
 
@@ -21,29 +19,26 @@ def log(text):
     app.logger.info(text)
 
 #redirect(url_for('index'))
+#r = flask.Response()
+#r.setcookie(...)
+#return r
 
 # respond error
 # endpoint
 # repository
 
-def init_session(nick):
-    session["nickname"] = nick
-    session["games"] = []
-    session["current_game"] = -1
+# session["games"] = []
+# session["current_game"] = -1
 
-
-@app.route("/")
-def hello_world():
-    return "<h1>Game set</h1>"
-
-#r = flask.Response()
-#r.setcookie(...)
-#return r
 
 userRep = UserRepository(UserDataSource())
 
 def respond(response: BaseResponse):
     return response.to_dict()
+
+@app.route("/")
+def hello_world():
+    return "<h1>Game set</h1>"
 
 @app.post("/user/register")
 def register():
