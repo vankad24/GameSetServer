@@ -1,14 +1,18 @@
-#cmd
-#py -m pip install flask
-# in the current directory
-#py -m flask run
 from flask import Flask, flash, request, redirect, url_for, render_template, g, make_response, session
 from markupsafe import escape
 from data.UserDataSource import UserDataSource
+from dto.request.GameRequest import GameRequest
+from dto.request.PickRequest import PickRequest
 from dto.request.RegisterRequest import RegisterRequest
 from dto.response.BaseResponse import BaseResponse
+from dto.response.GameFieldResponse import GameFieldResponse
+from dto.response.GameResponse import GameResponse
 from dto.response.ErrorResponse import ErrorResponse
+from dto.response.ListOfGamesResponse import ListOfGamesResponse
+from dto.response.PickResponse import PickResponse
 from dto.response.TokenResponse import TokenResponse
+from repository.ApiException import ApiException
+from repository.GameRepository import GameRepository
 from repository.UserRepository import UserRepository
 
 app = Flask(__name__)
@@ -23,116 +27,104 @@ def log(text):
 #r.setcookie(...)
 #return r
 
-# respond error
-# endpoint
-# repository
-
-# session["games"] = []
-# session["current_game"] = -1
-
-
-userRep = UserRepository(UserDataSource())
+source = UserDataSource()
+userRep = UserRepository(source)
+gameRep = GameRepository(source)
 
 def respond(response: BaseResponse):
     return response.to_dict()
 
 @app.route("/")
 def hello_world():
-    return "<h1>Game set</h1>"
+    return userRep.main()
 
 @app.post("/user/register")
 def register():
     # received request
     req = RegisterRequest.from_request()
     try:
-        token = userRep.register(req.nick, req.password)
-        return respond(TokenResponse(req.nick, token))
-    except Exception as e:
-        return respond(ErrorResponse(e.args[0]))
+        user = userRep.register(req.nick, req.password)
+        return respond(TokenResponse(user.token, user.nickname))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
 
 @app.post("/user/login")
 def login():
     # received request
     req = RegisterRequest.from_request()
     try:
-        token = userRep.login(req.nick,req.password)
-        return respond(TokenResponse(req.nick, token))
-    except Exception as e:
-        return respond(ErrorResponse(e.args[0]))
+        user = userRep.login(req.nick, req.password)
+        return respond(TokenResponse(user.token, user.nickname))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
 
 @app.post("/user/logout")
 def logout():
     try:
         userRep.logout()
         return respond(BaseResponse())
-    except Exception as e:
-        return respond(ErrorResponse(e.args[0]))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
 
-@app.post("/user/token")
-def get_token():
+@app.post("/set/room/create")
+def create_game():
+    req = GameRequest.from_request()
     try:
-        token = userRep.get_token()
-        nick = userRep.get_nick()
-        return respond(TokenResponse(nick, token))
-    except Exception as e:
-        return respond(ErrorResponse(e.args[0]))
+        game_id = gameRep.create(req.token)
+        return respond(GameResponse(game_id))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
 
-# @app.post("/set/room/create")
-# def create_game():
-#     if not is_logged_id():
-#         return fail("You need to log in", 401)
-#     try:
-#         data = request.get_json()
-#         token = data["accessToken"]
-#         if not valid_token(token):
-#             return fail("Invalid access token")
-#         id = 0
-#         if len(session["games"]) == 0:
-#             session["games"] = [{"id":0}]
-#         else:
-#             #todo global games var, "cards", score
-#             games = session["games"]
-#             id = games[-1]["id"]+1
-#             games.append({"id":id})
-#             session["games"] = games
-#         return success(gameId=id)
-#     except:
-#         return fail()
-#
-# @app.post("/set/room/list")
-# def get_games():
-#     if not is_logged_id():
-#         return fail("You need to log in")
-#     try:
-#         data = request.get_json()
-#         token = data["accessToken"]
-#         if not valid_token(token):
-#             return fail("Invalid access token")
-#         arr = []
-#         for game in session["games"]:
-#             arr.append({"id":game["id"]})
-#         return success(games=arr)
-#     except:
-#         return fail()
-#
-# @app.post("/set/room/list/enter")
-# def enter_game():
-#     if not is_logged_id():
-#         return fail("You need to log in")
-#     try:
-#         data = request.get_json()
-#         token = data["accessToken"]
-#         if not valid_token(token):
-#             return fail("Invalid access token")
-#         game_id = data["gameId"]
-#         for game in session["games"]:
-#             if game["id"] == game_id:
-#                 session["current_game"] = game_id
-#                 return success(gameId=game_id)
-#         return fail("Wrong game id")
-#     except:
-#         return fail()
+@app.post("/set/room/list")
+def get_games():
+    req = GameRequest.from_request()
+    try:
+        ids = gameRep.get_games_ids(req.token)
+        return respond(ListOfGamesResponse(ids))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
 
+@app.post("/set/room/enter")
+def enter_game():
+    req = GameRequest.from_request()
+    try:
+        gameRep.join_game(req.token,req.game_id)
+        return respond(GameResponse(req.game_id))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
+
+@app.post("/set/room/leave")
+def leave_game():
+    req = GameRequest.from_request()
+    try:
+        game_id = gameRep.leave_game(req.token)
+        return respond(GameResponse(game_id))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
+
+@app.post("/set/field")
+def get_field():
+    req = GameRequest.from_request()
+    try:
+        game = gameRep.get_current_game(req.token)
+        uid = UserRepository.get_user_id()
+        score = game.get_score_by_id(uid)
+        return respond(GameFieldResponse(game.field,score))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
+
+@app.post("/set/pick")
+def pick():
+    req = PickRequest.from_request()
+    try:
+        is_set, score = gameRep.pick_cards(req.token, req.cards_ids)
+        return respond(PickResponse(is_set, score))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
+
+@app.post("/set/get")
+def get_three_cards():
+    ...
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0",debug=True)

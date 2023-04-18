@@ -1,8 +1,8 @@
 from flask import request
 
 class PickRequest:
-    def __init__(self, token, cards):
-        self.cards = cards
+    def __init__(self, token, cards_ids):
+        self.cards_ids = cards_ids
         self.token = token
 
     @staticmethod

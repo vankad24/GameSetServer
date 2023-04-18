@@ -1,9 +1,7 @@
 from dto.response.BaseResponse import BaseResponse
-from model.User import User
-
 
 class TokenResponse(BaseResponse):
-    def __init__(self, nick, token):
+    def __init__(self, token, nick):
         super().__init__()
         self.accessToken = token
         self.nickname = nick

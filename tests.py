@@ -25,9 +25,10 @@ import pickle
 class C(NamedTuple):
 	msg: str = ""
 
-class A(NamedTuple):
-	# def __init__(self):
-	# 	self.a = True
+class A:
+	def __init__(self):
+		# self.a = 5
+		pass
 	a: int = 24
 	error: C = None
 
@@ -40,7 +41,11 @@ class B(A):
 		self.msg = "hi"
 
 # print( pickle.dumps(A()))
-print(A(4,C("hi"))._asdict())
+A().a = 3
+print(A().a)
+t = A()
+t.a = 4
+print(t)
 # print(success(hi=5))
 # test()
 # add_user("hi4", "1")

@@ -3,6 +3,8 @@ from uuid import uuid4
 from flask import session
 
 from data.UserDataSource import UserDataSource
+from model.User import User
+from repository.ApiException import ApiException
 
 
 class UserRepository:
@@ -10,55 +12,59 @@ class UserRepository:
         self.users: UserDataSource = source
 
     @staticmethod
-    def is_valid_token(token):
-        if ("token" not in session) or (session["token"] != token):
-            raise Exception("Invalid token")
-
-    @staticmethod
     def should_be_logged_in():
-        if "nick" not in session:
-            raise Exception("You need to log in")
+        if "token" not in session:
+            raise ApiException("You need to log in")
 
     @staticmethod
     def should_be_logged_out():
-        if "nick" in session:
-            raise Exception("You are logged in")
+        if "token" in session:
+            raise ApiException("You are logged in")
 
-    def get_token(self):
-        self.should_be_logged_in()
-        token = uuid4().hex
-        session["token"] = token
-        return token
+    @staticmethod
+    def authorize_user(user: User):
+        if not user.token:
+            user.token = uuid4().hex
+        session["token"] = user.token
+        session["nick"] = user.nickname
+        session["uid"] = user.id
 
-    def get_nick(self):
-        self.should_be_logged_in()
-        return session["nick"]
+    @staticmethod
+    def get_user_id():
+        return session["uid"]
 
     def register(self, nick, password):
         self.should_be_logged_out()
-        real_password = self.users.get_by_nick(nick)
         if not nick or not password:
-            raise Exception("Incorrect request")
-        if real_password is not None:
-            raise Exception("User already exist")
+            raise ApiException("Incorrect request")
+        user = self.users.get_by_nick(nick)
+        if user is not None:
+            raise ApiException("User already exist")
         else:
-            self.users.add(nick,password)
-            session["nick"] = nick
-        return self.get_token()
+            user = self.users.create_new_user(nick, password)
+            self.authorize_user(user)
+            return user
 
     def login(self, nick, password):
         self.should_be_logged_out()
-        real_password = self.users.get_by_nick(nick)
         if not nick or not password:
-            raise Exception("Incorrect request")
-        if real_password is None:
-            raise Exception(f"The nickname '{nick}' is not registered")
-        elif real_password != password:
-            raise Exception("Wrong password")
+            raise ApiException("Incorrect request")
+        user = self.users.get_by_nick(nick)
+        if user is None:
+            raise ApiException(f"The nickname '{nick}' is not registered")
+        elif user.password != password:
+            raise ApiException("Wrong password")
         else:
-            session["nick"] = nick
-        return self.get_token()
+            self.authorize_user(user)
+            return user
 
     def logout(self):
         self.should_be_logged_in()
         session.clear()
+
+    @staticmethod
+    def main():
+        name = "unknown user"
+        if "nick" in session:
+            name = session["nick"]
+        return f"<h1>Hello, {name}!</h1>"
