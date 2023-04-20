@@ -41,8 +41,9 @@ class UserRepository:
         if user is not None:
             raise ApiException("User already exist")
         else:
-            user = self.users.create_new_user(nick, password)
+            user = self.users.create_user(nick, password)
             self.authorize_user(user)
+            self.users.save_new_user(user)
             return user
 
     def login(self, nick, password):
@@ -62,9 +63,6 @@ class UserRepository:
         self.should_be_logged_in()
         session.clear()
 
-    @staticmethod
-    def main():
-        name = "unknown user"
-        if "nick" in session:
-            name = session["nick"]
-        return f"<h1>Hello, {name}!</h1>"
+    def get_user_by_token(self, token):
+        pass
+

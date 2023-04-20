@@ -1,5 +1,3 @@
-from typing import NamedTuple
-
 class Card:
     def __init__(self,card_id:int, color:int, shape:int, fill:int, count:int):
         self.count = count

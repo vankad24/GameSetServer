@@ -3,7 +3,8 @@ from random import shuffle
 
 class Game:
     def __init__(self):
-        self.cards = []
+        self.finished = False
+        self.cards = []  #deck
         self.field = []
         self.players = []
         self.scores = {}
@@ -50,9 +51,24 @@ class Game:
                 return False
         return True
 
-    def remove_cards(self, cards):
+    def remove_from_field(self, cards):
         for card in cards:
             self.field.remove(card)
 
-    def is_not_over(self):
-        return True
+    def check_game_over(self):
+        all_cards = self.cards + self.field
+        if len(all_cards)<21:
+            set_cards = self.find_set(all_cards)
+            if set_cards is None:
+                self.finished = True
+
+    @staticmethod
+    def find_set(cards):
+        l = len(cards)
+        for i in range(l):
+            for j in range(i + 1, l):
+                for k in range(j + 1, l):
+                    if Game.is_set(cards[i], cards[j], cards[k]):
+                        return cards[i], cards[j], cards[k]
+        return None
+

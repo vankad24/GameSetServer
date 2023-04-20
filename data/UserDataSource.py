@@ -11,7 +11,7 @@ class UserDataSource:
                 if line != "":
                     t = line.split(",")
                     uid = int(t[0])
-                    self.data[uid] = User(uid,t[1],t[2],"")
+                    self.data[uid] = User(uid,t[1],t[2],t[3])
 
     def get_by_nick(self, nick):
         users = list(filter(lambda u: u.nickname==nick, self.data.values()))
@@ -26,12 +26,14 @@ class UserDataSource:
         else:
             return None
 
-    def create_new_user(self, nickname, password):
-        new_id = uuid4().int
+    def create_user(self, nickname, password):
+        new_id = uuid4().int % 1000000
         while new_id in self.data:
-            new_id = uuid4().int
+            new_id = uuid4().int % 1000000
         new_user = User(new_id,nickname,password,"")
         self.data[new_id] = new_user
-        with open("users.csv", "a") as f:
-            f.write(f"{new_id},{nickname},{password}\n")
         return new_user
+
+    def save_new_user(self, user):
+        with open("users.csv", "a") as f:
+            f.write(f"{user.id},{user.nickname},{user.password},{user.token}\n")

@@ -1,13 +1,16 @@
 from flask import Flask, flash, request, redirect, url_for, render_template, g, make_response, session
 from markupsafe import escape
 from data.UserDataSource import UserDataSource
+from dto.request.BaseRequest import BaseRequest
 from dto.request.GameRequest import GameRequest
 from dto.request.PickRequest import PickRequest
 from dto.request.RegisterRequest import RegisterRequest
 from dto.response.BaseResponse import BaseResponse
+from dto.response.FindSetResponse import FindSetResponse
 from dto.response.GameFieldResponse import GameFieldResponse
 from dto.response.GameResponse import GameResponse
 from dto.response.ErrorResponse import ErrorResponse
+from dto.response.GameStatisticsResponse import GameStatisticsResponse
 from dto.response.ListOfGamesResponse import ListOfGamesResponse
 from dto.response.PickResponse import PickResponse
 from dto.response.TokenResponse import TokenResponse
@@ -27,16 +30,21 @@ def log(text):
 #r.setcookie(...)
 #return r
 
-source = UserDataSource()
-userRep = UserRepository(source)
-gameRep = GameRepository(source)
+userRep = UserRepository(UserDataSource())
+gameRep = GameRepository()
 
 def respond(response: BaseResponse):
     return response.to_dict()
 
-@app.route("/")
-def hello_world():
-    return userRep.main()
+@app.post("/")
+def hello():
+    req = BaseRequest.from_request()
+    try:
+        user = userRep.get_user_by_token(req.token)
+        name = user.nickname
+    except ApiException as e:
+        name = "unknown user"
+    return f"<h1>Hello, {name}!</h1>"
 
 @app.post("/user/register")
 def register():
@@ -55,14 +63,6 @@ def login():
     try:
         user = userRep.login(req.nick, req.password)
         return respond(TokenResponse(user.token, user.nickname))
-    except ApiException as e:
-        return respond(ErrorResponse(e.msg))
-
-@app.post("/user/logout")
-def logout():
-    try:
-        userRep.logout()
-        return respond(BaseResponse())
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
 
@@ -124,7 +124,32 @@ def pick():
 
 @app.post("/set/get")
 def get_three_cards():
-    ...
+    req = GameRequest.from_request()
+    try:
+        gameRep.get_three_cards(req.token)
+        return get_field()
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
+
+@app.post("/set/stats")
+def get_statistics():
+    req = GameRequest.from_request()
+    try:
+        gameRep.check_token(req.token)
+        game_id = gameRep.get_current_game_id()
+        game = gameRep.get_game_by_id(game_id)
+        return respond(GameStatisticsResponse(game.scores))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
+
+@app.post("/set/find")
+def find_set():
+    req = GameRequest.from_request()
+    try:
+        ids, score = gameRep.find_set(req.token)
+        return respond(FindSetResponse(ids, score))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0",debug=True)
