@@ -38,6 +38,7 @@ ExecStart=/usr/bin/gunicorn --workers 3 \
 WantedBy=multi-user.target
 ```
 где вместо `имя_пользователя` нужно ввести ваше имя
+
 6. Проверяем сервис
 ```
 sudo service flaskapp start
