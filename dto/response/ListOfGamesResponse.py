@@ -1,14 +1,15 @@
 from dto.response.BaseResponse import BaseResponse
 
+
 class ListOfGamesResponse(BaseResponse):
-    def __init__(self, ids):
+    def __init__(self, games):
         super().__init__()
-        self.ids = ids
+        self.games = games
 
     def to_dict(self):
         d = super().to_dict()
         arr = []
-        for game_id in self.ids:
-            arr.append({"id":game_id})
+        for game in self.games:
+            arr.append(game.to_dict())
         d["games"] = arr
         return d

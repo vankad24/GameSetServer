@@ -1,10 +1,11 @@
-from dto.response.BaseResponse import BaseResponse
+from dto.response.GameResponse import GameResponse
 
-class GameFieldResponse(BaseResponse):
-    def __init__(self, field, score):
-        super().__init__()
-        self.score = score
-        self.field = field
+
+class GameFieldResponse(GameResponse):
+    def __init__(self, score, game):
+        super().__init__(score, game)
+        self.left = game.cards_left()
+        self.field = game.field
 
     def to_dict(self):
         d = super().to_dict()
@@ -12,5 +13,5 @@ class GameFieldResponse(BaseResponse):
         for card in self.field:
             arr.append(card.to_dict())
         d["cards"] = arr
-        d["score"] = self.score
+        d["cardsLeft"] = self.left
         return d

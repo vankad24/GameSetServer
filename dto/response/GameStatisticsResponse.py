@@ -1,9 +1,10 @@
-from dto.response.BaseResponse import BaseResponse
+from dto.response.GameResponse import GameResponse
 
-class GameStatisticsResponse(BaseResponse):
-    def __init__(self, statistics):
-        super().__init__()
-        self.statistics = statistics
+
+class CreateGameStatisticsResponse(GameResponse):
+    def __init__(self, score, game):
+        super().__init__(score, game)
+        self.statistics = game.scores
 
     def to_dict(self):
         d = super().to_dict()

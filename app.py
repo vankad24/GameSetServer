@@ -1,5 +1,4 @@
 from flask import Flask, flash, request, redirect, url_for, render_template, g, make_response, session
-from markupsafe import escape
 from data.UserDataSource import UserDataSource
 from dto.request.BaseRequest import BaseRequest
 from dto.request.GameRequest import GameRequest
@@ -8,9 +7,9 @@ from dto.request.RegisterRequest import RegisterRequest
 from dto.response.BaseResponse import BaseResponse
 from dto.response.FindSetResponse import FindSetResponse
 from dto.response.GameFieldResponse import GameFieldResponse
-from dto.response.GameResponse import GameResponse
+from dto.response.GameRoomResponse import GameRoomResponse
 from dto.response.ErrorResponse import ErrorResponse
-from dto.response.GameStatisticsResponse import GameStatisticsResponse
+from dto.response.GameStatisticsResponse import CreateGameStatisticsResponse
 from dto.response.ListOfGamesResponse import ListOfGamesResponse
 from dto.response.PickResponse import PickResponse
 from dto.response.TokenResponse import TokenResponse
@@ -24,11 +23,6 @@ app.secret_key = '728fc787f7914b9684f4a7cefa7405c0'
 # печать в консоль
 def log(text):
     app.logger.info(text)
-
-#redirect(url_for('index'))
-#r = flask.Response()
-#r.setcookie(...)
-#return r
 
 userRep = UserRepository(UserDataSource())
 gameRep = GameRepository()
@@ -58,7 +52,6 @@ def register():
 
 @app.post("/user/login")
 def login():
-    # received request
     req = RegisterRequest.from_request()
     try:
         user = userRep.login(req.nick, req.password)
@@ -70,17 +63,9 @@ def login():
 def create_game():
     req = GameRequest.from_request()
     try:
-        game_id = gameRep.create(req.token)
-        return respond(GameResponse(game_id))
-    except ApiException as e:
-        return respond(ErrorResponse(e.msg))
-
-@app.post("/set/room/list")
-def get_games():
-    req = GameRequest.from_request()
-    try:
-        ids = gameRep.get_games_ids(req.token)
-        return respond(ListOfGamesResponse(ids))
+        user = userRep.get_user_by_token(req.token)
+        game = gameRep.create_game(user.id)
+        return respond(GameRoomResponse(game))
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
 
@@ -88,8 +73,19 @@ def get_games():
 def enter_game():
     req = GameRequest.from_request()
     try:
-        gameRep.join_game(req.token,req.game_id)
-        return respond(GameResponse(req.game_id))
+        uid = userRep.get_user_by_token(req.token).id
+        game = gameRep.join_game(uid,req.game_id)
+        return respond(GameRoomResponse(game))
+    except ApiException as e:
+        return respond(ErrorResponse(e.msg))
+
+@app.post("/set/room/list")
+def get_games():
+    req = GameRequest.from_request()
+    try:
+        userRep.get_user_by_token(req.token)
+        games = gameRep.get_games()
+        return respond(ListOfGamesResponse(games))
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
 
@@ -97,8 +93,9 @@ def enter_game():
 def leave_game():
     req = GameRequest.from_request()
     try:
-        game_id = gameRep.leave_game(req.token)
-        return respond(GameResponse(game_id))
+        uid = userRep.get_user_by_token(req.token).id
+        gameRep.leave_game(uid)
+        return respond(BaseResponse())
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
 
@@ -106,10 +103,10 @@ def leave_game():
 def get_field():
     req = GameRequest.from_request()
     try:
-        game = gameRep.get_current_game(req.token)
-        uid = UserRepository.get_user_id()
+        uid = userRep.get_user_by_token(req.token).id
+        game = gameRep.get_game_by_uid(uid)
         score = game.get_score_by_id(uid)
-        return respond(GameFieldResponse(game.field,score))
+        return respond(GameFieldResponse(score, game))
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
 
@@ -117,16 +114,19 @@ def get_field():
 def pick():
     req = PickRequest.from_request()
     try:
-        is_set, score = gameRep.pick_cards(req.token, req.cards_ids)
-        return respond(PickResponse(is_set, score))
+        uid = userRep.get_user_by_token(req.token).id
+        is_set, game = gameRep.pick_cards(uid, req.cards_ids)
+        score = game.get_score_by_id(uid)
+        return respond(PickResponse(is_set, score, game))
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
 
-@app.post("/set/get")
+@app.post("/set/add")
 def get_three_cards():
     req = GameRequest.from_request()
     try:
-        gameRep.get_three_cards(req.token)
+        uid = userRep.get_user_by_token(req.token).id
+        gameRep.add_three_cards(uid)
         return get_field()
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
@@ -135,10 +135,10 @@ def get_three_cards():
 def get_statistics():
     req = GameRequest.from_request()
     try:
-        gameRep.check_token(req.token)
-        game_id = gameRep.get_current_game_id()
-        game = gameRep.get_game_by_id(game_id)
-        return respond(GameStatisticsResponse(game.scores))
+        uid = userRep.get_user_by_token(req.token).id
+        game = gameRep.get_game_by_uid(uid)
+        score = game.get_score_by_id(uid)
+        return respond(CreateGameStatisticsResponse(score, game))
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
 
@@ -146,8 +146,10 @@ def get_statistics():
 def find_set():
     req = GameRequest.from_request()
     try:
-        ids, score = gameRep.find_set(req.token)
-        return respond(FindSetResponse(ids, score))
+        uid = userRep.get_user_by_token(req.token).id
+        ids, game = gameRep.find_set(uid)
+        score = game.get_score_by_id(uid)
+        return respond(FindSetResponse(ids, score, game))
     except ApiException as e:
         return respond(ErrorResponse(e.msg))
 

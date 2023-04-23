@@ -1,10 +1,14 @@
 from model.Card import Card
 from random import shuffle
 
+from model.GameStatus import Status
+
+
 class Game:
-    def __init__(self):
-        self.finished = False
-        self.cards = []  #deck
+    def __init__(self, gid):
+        self.id = gid
+        self.status = Status.ongoing
+        self.deck = []
         self.field = []
         self.players = []
         self.scores = {}
@@ -17,20 +21,26 @@ class Game:
             for shape in range(1,4):
                 for fill in range(1,4):
                     for count in range(1,4):
-                        self.cards.append(Card(card_id,color,shape,fill,count))
+                        self.deck.append(Card(card_id, color, shape, fill, count))
                         card_id+=1
-        shuffle(self.cards)
+        shuffle(self.deck)
 
-    def add_user(self,uid):
+    def add_player(self, uid):
         self.players.append(uid)
         self.scores[uid] = 0
 
-    def remove_user(self,uid):
+    def remove_player(self, uid):
         self.players.remove(uid)
+
+    def is_empty(self):
+        return len(self.players)==0
+
+    def cards_left(self):
+        return len(self.deck)
 
     def add_to_field(self, num):
         for i in range(num):
-            self.field.append(self.cards.pop())
+            self.field.append(self.deck.pop())
 
     def get_score_by_id(self, uid):
         return self.scores[uid]
@@ -56,11 +66,11 @@ class Game:
             self.field.remove(card)
 
     def check_game_over(self):
-        all_cards = self.cards + self.field
+        all_cards = self.deck + self.field
         if len(all_cards)<21:
             set_cards = self.find_set(all_cards)
             if set_cards is None:
-                self.finished = True
+                self.status = Status.ended
 
     @staticmethod
     def find_set(cards):
@@ -72,3 +82,5 @@ class Game:
                         return cards[i], cards[j], cards[k]
         return None
 
+    def to_dict(self):
+        return {"gameId":self.id, "status":self.status.name}

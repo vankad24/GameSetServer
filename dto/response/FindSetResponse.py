@@ -1,13 +1,12 @@
-from dto.response.BaseResponse import BaseResponse
+from dto.response.GameResponse import GameResponse
 
-class FindSetResponse(BaseResponse):
-    def __init__(self, ids, score):
-        super().__init__()
-        self.score = score
+
+class FindSetResponse(GameResponse):
+    def __init__(self, ids, score, game):
+        super().__init__(score, game)
         self.ids = ids
 
     def to_dict(self):
         d = super().to_dict()
         d["cards"] = self.ids
-        d["score"] = self.score
         return d

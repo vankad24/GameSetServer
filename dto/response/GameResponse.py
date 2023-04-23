@@ -1,11 +1,13 @@
-from dto.response.BaseResponse import BaseResponse
+from dto.response.GameRoomResponse import GameRoomResponse
+from model.Game import Game
 
-class GameResponse(BaseResponse):
-    def __init__(self, game_id):
-        super().__init__()
-        self.game_id = game_id
+
+class GameResponse(GameRoomResponse):
+    def __init__(self, score, game: Game):
+        super().__init__(game)
+        self.score = score
 
     def to_dict(self):
         d = super().to_dict()
-        d["gameId"] = self.game_id
+        d["score"] = self.score
         return d
