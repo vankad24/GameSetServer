@@ -30,6 +30,10 @@ gameRep = GameRepository()
 def respond(response: BaseResponse):
     return response.to_dict()
 
+@app.get("/")
+def hello_there():
+    return "<h1>Powered by V idea!</h1>"
+
 @app.post("/")
 def hello():
     req = BaseRequest.from_request()
